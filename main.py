@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request
 import boto3
+import config
 
 app = Flask(__name__)
 
@@ -9,6 +10,38 @@ def list_instances():
     ec2 = create_boto3_client(*credentials)
     id_list = get_instance_ids(ec2)
     return jsonify(instances=id_list)
+
+@app.route('/ec2/start', methods=['POST'])
+def start_instance():
+    *credentials, instance_id = parse_credentials_for_start_stop(request.args)
+    ec2 = create_boto3_client(*credentials)
+    state = start_instance(ec2, instance_id)
+    state['InstanceId'] = instance_id
+    return jsonify(state)
+
+@app.route('/ec2/stop', methods=['POST'])
+def stop_instance():
+    *credentials, instance_id = parse_credentials_for_start_stop(request.args)
+    ec2 = create_boto3_client(*credentials)
+    state = stop_instance(ec2, instance_id)
+    state['InstanceId'] = instance_id
+    return jsonify(state)
+
+
+def stop_instance(ec2, instance_id):
+    response = ec2.stop_instances(
+        InstanceIds=[instance_id]
+    )
+    state = response['StoppingInstances'][0]['CurrentState']
+    return state
+
+
+def start_instance(ec2, instance_id):
+    response = ec2.start_instances(
+        InstanceIds=[instance_id]
+    )
+    state = response['StartingInstances'][0]['CurrentState']
+    return state
 
 
 def parse_credentials_for_listing(args):
@@ -47,4 +80,8 @@ def get_instance_ids(ec2):
     return instance_ids
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(
+        host=config.host,
+        port=config.port,
+        debug=config.debug
+    )
