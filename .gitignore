@@ -3,4 +3,5 @@ __pycache__
 *.pem
 *.csv
 *.txt
+!requirements.txt
 .vscode
